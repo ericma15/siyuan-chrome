@@ -1,3 +1,46 @@
+const eventDispatcher = async (request, sender, sendResponse) => {
+    if ('tip' === request.func && request.tip) {
+        siyuanShowTip(request.msg, request.timeout)
+        return
+    }
+
+    if ('tipKey' === request.func && request.tip) {
+        siyuanShowTipByKey(request.msg, request.timeout)
+        return
+    }
+
+    if ('copy2Clipboard' === request.func) {
+        await copyToClipboard(request.data)
+        return
+    }
+
+    if ('reload' === request.func) {
+        window.location.reload()
+        return
+    }
+
+    if ('siyuanGetReadability' === request.func) {
+        siyuanGetReadability(request.tabId)
+        return
+    }
+
+    if ('copy' !== request.func) {
+        return
+    }
+
+    siyuanShowTipByKey("tip_clipping")
+
+    const selection = window.getSelection()
+    if (selection && 0 < selection.rangeCount) {
+        const range = selection.getRangeAt(0)
+        const tempElement = document.createElement('div')
+        tempElement.appendChild(range.cloneContents())
+        siyuanSendUpload(tempElement, request.tabId, request.srcUrl, "part")
+    } else {
+        siyuanShowTipByKey("tip_no_selection", 3000)
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     // 监听来自网页的 postMessage 请求（Playwright 自动化）
     window.addEventListener('message', (event) => {
@@ -69,49 +112,9 @@ document.addEventListener('DOMContentLoaded', function () {
         })
     })
 
-    chrome.runtime.onMessage.addListener(
-        async (request, sender, sendResponse) => {
-            if ('tip' === request.func && request.tip) {
-                siyuanShowTip(request.msg, request.timeout)
-                return
-            }
-
-            if ('tipKey' === request.func && request.tip) {
-                siyuanShowTipByKey(request.msg, request.timeout)
-                return
-            }
-
-            if ('copy2Clipboard' === request.func) {
-                await copyToClipboard(request.data)
-                return
-            }
-
-            if ('reload' === request.func) {
-                window.location.reload()
-                return
-            }
-
-            if ('siyuanGetReadability' === request.func) {
-                siyuanGetReadability(request.tabId)
-                return
-            }
-
-            if ('copy' !== request.func) {
-                return
-            }
-
-            siyuanShowTipByKey("tip_clipping")
-
-            const selection = window.getSelection()
-            if (selection && 0 < selection.rangeCount) {
-                const range = selection.getRangeAt(0)
-                const tempElement = document.createElement('div')
-                tempElement.appendChild(range.cloneContents())
-                siyuanSendUpload(tempElement, request.tabId, request.srcUrl, "part")
-            } else {
-                siyuanShowTipByKey("tip_no_selection", 3000)
-            }
-        })
+    // Fix for unhandled exception when no focus: #13208
+    chrome.runtime.onMessage.removeListener(eventDispatcher)
+    chrome.runtime.onMessage.addListener(eventDispatcher)
 
     const copyToClipboard = async (textToCopy) => {
         // 修复无焦点的未捕获异常：https://github.com/siyuan-note/siyuan/issues/13208
@@ -764,7 +767,10 @@ const setMathJaxDataFormula = () => {
         (document.head || document.documentElement).appendChild(script);
 
         const cleanUp = () => {
-            try { script.remove(); } catch (e) {}
+            try {
+                script.remove();
+            } catch (e) {
+            }
             resolve();
         };
 
