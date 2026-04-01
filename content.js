@@ -115,32 +115,6 @@ document.addEventListener('DOMContentLoaded', function () {
     // Fix for unhandled exception when no focus: #13208
     chrome.runtime.onMessage.removeListener(eventDispatcher)
     chrome.runtime.onMessage.addListener(eventDispatcher)
-
-    const copyToClipboard = async (textToCopy) => {
-        // 修复无焦点的未捕获异常：https://github.com/siyuan-note/siyuan/issues/13208
-        await new Promise(resolve => requestAnimationFrame(resolve));
-
-        if (navigator.clipboard && window.isSecureContext) {
-            try {
-                return await navigator.clipboard.writeText(textToCopy);
-            } catch (error) {
-                //console.warn('Failed to copy text: ', error);
-            }
-        }
-
-        let textArea = document.createElement('textarea')
-        textArea.value = textToCopy
-        textArea.style.position = 'fixed'
-        textArea.style.left = '-999999px'
-        textArea.style.top = '-999999px'
-        document.body.appendChild(textArea)
-        textArea.focus()
-        textArea.select()
-        return new Promise((res, rej) => {
-            document.execCommand('copy') ? res() : rej()
-            textArea.remove()
-        })
-    }
 })
 
 let tipTimeoutId
@@ -951,6 +925,32 @@ const siyuanSendUpload = async (tempElement, tabId, srcUrl, type, article, href)
         };
         console.log('[SIYUAN] Sending to background:', { func: 'upload-copy', type: msgJSON.type, title: msgJSON.title })
         chrome.runtime.sendMessage({func: 'upload-copy', data: msgJSON})
+    })
+}
+
+const copyToClipboard = async (textToCopy) => {
+    // 修复无焦点的未捕获异常：https://github.com/siyuan-note/siyuan/issues/13208
+    await new Promise(resolve => requestAnimationFrame(resolve));
+
+    if (navigator.clipboard && window.isSecureContext) {
+        try {
+            return await navigator.clipboard.writeText(textToCopy);
+        } catch (error) {
+            //console.warn('Failed to copy text: ', error);
+        }
+    }
+
+    let textArea = document.createElement('textarea')
+    textArea.value = textToCopy
+    textArea.style.position = 'fixed'
+    textArea.style.left = '-999999px'
+    textArea.style.top = '-999999px'
+    document.body.appendChild(textArea)
+    textArea.focus()
+    textArea.select()
+    return new Promise((res, rej) => {
+        document.execCommand('copy') ? res() : rej()
+        textArea.remove()
     })
 }
 
